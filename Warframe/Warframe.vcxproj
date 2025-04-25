@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\kille\Desktop\Epic Code\WarframeApp\Warframe\ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\kille\Desktop\Epic Code\WarframeApp\Warframe\Warframe\rapidjson;C:\Users\kille\Desktop\Epic Code\WarframeApp\Warframe\ImGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,10 +138,14 @@
     <ClInclude Include="font.h" />
     <ClInclude Include="imgui_impl_dx11.h" />
     <ClInclude Include="imgui_impl_win32.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="warframe.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Warframe.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

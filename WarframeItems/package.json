@@ -1,0 +1,19 @@
+{
+  "name": "warframeitems",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "eslint": "^9.24.0"
+  },
+  "dependencies": {
+    "@wfcd/items": "^1.1270.111"
+  }
+}

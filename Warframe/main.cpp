@@ -5,6 +5,9 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include <iostream>
+#include "rapidjson/document.h" 
+#include <fstream> 
+#include "rapidjson/istreamwrapper.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -26,6 +29,66 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
+    //std::ifstream file("../WarframeItems/relics.json");
+
+    //std::string json((std::istreambuf_iterator<char>(file)),
+    //    std::istreambuf_iterator<char>());
+
+    //rapidjson::Document doc;
+
+    //doc.Parse(json.c_str());
+
+    //if (doc.HasParseError()) {
+    //    std::cerr << "Error parsing JSON: "
+    //        << doc.GetParseError() << std::endl;
+    //    return 1;
+    //}
+
+    //for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); ++it) {
+    //    const std::string relicName = it->name.GetString();
+    //    const rapidjson::Value& relicData = it->value;
+
+    //    std::cout << "Relic: " << relicName << "\n";
+
+    //    if (relicData.HasMember("count") && relicData["count"].IsInt())
+    //        std::cout << "  Count: " << relicData["count"].GetInt() << "\n";
+
+    //    if (relicData.HasMember("vaulted") && relicData["vaulted"].IsBool())
+    //        std::cout << "  Vaulted: " << relicData["vaulted"].GetBool() << "\n";
+
+    //    std::cout << "--------------------------\n";
+    //}
+    
+    std::ifstream ifs("../WarframeItems/relics.json");
+    rapidjson::IStreamWrapper isw(ifs);
+    rapidjson::Document doc;
+    doc.ParseStream(isw);
+
+    if (!doc.IsObject()) {
+        std::cerr << "Expected root JSON to be an object.\n";
+        return 1;
+    }
+
+    // Create a new document to hold the array
+    rapidjson::Document newDoc;
+    newDoc.SetArray();
+
+    // Need an allocator to create new values
+    rapidjson::Document::AllocatorType& allocator = newDoc.GetAllocator();
+
+    for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); ++it) {
+        rapidjson::Value relic(rapidjson::kObjectType);
+
+        relic.AddMember("name", rapidjson::Value(it->name, allocator), allocator);
+        relic.AddMember("data", rapidjson::Value(it->value, allocator), allocator);
+
+        newDoc.PushBack(relic, allocator);
+    }
+    for (auto& v : newDoc.GetArray()) {
+        std::cout << "Relic name: " << v["name"].GetString() << "\n";
+    }
+    std::cout << "Count: " << doc.MemberCount() << "\n";
+    
     // Create application window
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
@@ -168,7 +231,89 @@ int main(int, char**)
             ImGui::Begin("Hello, world!", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);                          // Create a window called "Hello, world!" and append into it.
 
             ImGui::Image((ImTextureID)myTexture, ImVec2(image_width/8, image_height/8));
-            ImGui::SameLine(); ImGui::SetCursorPosY(ImGui::GetCursorPosY()+30); ImGui::Text("Warframe!");               // Display some text (you can use a format strings too)
+            ImGui::SameLine(); ImGui::SetCursorPosY(ImGui::GetCursorPosY()+30); ImGui::Text("Welcome to YOUR Warframe Database!");               // Display some text (you can use a format strings too)
+            /*ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(255, 202, 6));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor(201, 162, 6));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor(245, 211, 73));
+            ImGui::PushStyleColor(ImGuiCol_Text, (ImVec4)ImColor(0,0,0));
+            ImGui::Button("Relic"); ImGui::SameLine(); ImGui::Button("Prime Parts");
+            ImGui::PopStyleColor(4);*/
+            ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+            if (ImGui::BeginTabBar("diffTabs", tab_bar_flags))
+            {
+                if (ImGui::BeginTabItem("Relics"))
+                {
+                    //static int item_selected_idx = 0;
+                    //static bool item_highlight = false;
+                    //int item_highlighted_idx = -1;
+
+                    //if (ImGui::BeginListBox("listbox 1"))
+                    //{
+                    //    for (int n = 0; n < doc.MemberCount(); n++)
+                    //    {
+                    //        auto& relic = newDoc[n];
+                    //        const bool is_selected = (item_selected_idx == n);
+                    //        if (ImGui::Selectable(relic["name"].GetString(), is_selected))
+                    //        {
+                    //            item_selected_idx = n;
+                    //        }
+                    //        if (item_highlight && ImGui::IsItemHovered())
+                    //            item_highlighted_idx = n;
+
+                    //        // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                    //        if (is_selected)
+                    //            ImGui::SetItemDefaultFocus();
+                    //    }
+                    //    ImGui::EndListBox();
+                    //}
+
+                    static int item_selected_idx_x = 0;
+                    static int item_selected_idx_y = 0;
+                    static bool item_highlight = false;
+                    int item_highlighted_idx_x = -1;
+                    int item_highlighted_idx_y = -1;
+                    int n = 0;
+                    for (int y = 0; y < 537; y++)
+                    {
+                        for (int x = 0; x < 5; x++)
+                        {
+                            if (x > 0)
+                                ImGui::SameLine();
+                            if (n == doc.MemberCount() - 2)
+                            {
+                                continue;
+                            }
+
+                            auto& relic = newDoc[n];
+                            const bool is_selected = (item_selected_idx_x == x && item_selected_idx_y == y);
+                            if (ImGui::Selectable(relic["name"].GetString(), is_selected, 0, ImVec2(175, 50)))
+                            {
+                                item_selected_idx_x = x;
+                                item_selected_idx_y = y;
+                            }
+                            if (item_highlight && ImGui::IsItemHovered())
+                            {
+                                item_highlighted_idx_x = x;
+                                item_highlighted_idx_y = y;
+
+                            }
+
+                            //Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                            if (is_selected)
+                                ImGui::SetItemDefaultFocus();
+                            n++;
+                        }
+                    }
+
+                    ImGui::EndTabItem();
+                }
+                if(ImGui::BeginTabItem("Prime Parts"))
+                {
+                    ImGui::Text("bruh");
+                    ImGui::EndTabItem();
+                }
+            }
+            ImGui::EndTabBar();
             ImGui::End();
         }
 
