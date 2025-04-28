@@ -8,6 +8,8 @@
 #include "rapidjson/document.h" 
 #include <fstream> 
 #include "rapidjson/istreamwrapper.h"
+#include "rapidjson/ostreamwrapper.h"
+#include "rapidjson/writer.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -93,7 +95,7 @@ int main(int, char**)
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX11 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"YourWarframeDatabase", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -267,43 +269,97 @@ int main(int, char**)
                     //    ImGui::EndListBox();
                     //}
 
+                    ImGuiTextFilter Filter;
+
+                    rapidjson::GenericValue<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>* curRelic = NULL;
+
                     static int item_selected_idx_x = 0;
                     static int item_selected_idx_y = 0;
                     static bool item_highlight = false;
                     int item_highlighted_idx_x = -1;
                     int item_highlighted_idx_y = -1;
                     int n = 0;
-                    for (int y = 0; y < 537; y++)
+                    
+                    if (ImGui::BeginChild("##table", ImVec2(925, 0)))
                     {
-                        for (int x = 0; x < 5; x++)
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+                        ImGui::PushItemFlag(ImGuiItemFlags_NoNavDefaultFocus, true);
+                        if (ImGui::InputTextWithHint("##Filter", "Search (incl, -ecl)", Filter.InputBuf, IM_ARRAYSIZE(Filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
+                            Filter.Build();
+                        ImGui::PopItemFlag();
+
+                        for (int y = 0; y < 537; y++)
                         {
-                            if (x > 0)
-                                ImGui::SameLine();
-                            if (n == doc.MemberCount() - 2)
-                            {
-                                continue;
-                            }
+                            
 
-                            auto& relic = newDoc[n];
-                            const bool is_selected = (item_selected_idx_x == x && item_selected_idx_y == y);
-                            if (ImGui::Selectable(relic["name"].GetString(), is_selected, 0, ImVec2(175, 50)))
+                            for (int x = 0; x < 5; x++)
                             {
-                                item_selected_idx_x = x;
-                                item_selected_idx_y = y;
-                            }
-                            if (item_highlight && ImGui::IsItemHovered())
-                            {
-                                item_highlighted_idx_x = x;
-                                item_highlighted_idx_y = y;
+                                if (x > 0)
+                                    ImGui::SameLine();
+                                    if (n == doc.MemberCount() - 2)
+                                    {
+                                        continue;
+                                    }
 
-                            }
+                                
+                                const bool is_selected = (item_selected_idx_x == x && item_selected_idx_y == y);
+                                auto& relic = newDoc[n];
+                                const char* curName = relic["name"].GetString();
+                                
+                                if (Filter.PassFilter(curName))
+                                {
 
-                            //Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-                            if (is_selected)
-                                ImGui::SetItemDefaultFocus();
-                            n++;
+                                
+                                    if (ImGui::Selectable(curName, is_selected, 0, ImVec2(175, 50)))
+                                    {
+                                        item_selected_idx_x = x;
+                                        item_selected_idx_y = y;
+                                    }
+                                    if (item_highlight && ImGui::IsItemHovered())
+                                    {
+                                        item_highlighted_idx_x = x;
+                                        item_highlighted_idx_y = y;
+
+                                    }
+
+                                    //Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                                    if (is_selected)
+                                    { 
+                                        ImGui::SetItemDefaultFocus();
+                                        curRelic = &relic;
+                                    }
+    
+                                }
+                                n++;
+                            }
                         }
                     }
+                    ImGui::EndChild();
+
+                    ImGui::SameLine();
+                    ImGui::BeginGroup();
+                    
+                    if (curRelic)
+                    {
+                        int counter = (*curRelic)["data"]["count"].GetInt();
+                        ImGui::Text("%s", (*curRelic)["name"].GetString());
+                        ImGui::Text("Farmable: %d", (*curRelic)["data"]["vaulted"].GetBool());
+                        
+                        float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+                        ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
+                        if (ImGui::ArrowButton("##left", ImGuiDir_Left)) { counter--; (*curRelic)["data"]["count"] = rapidjson::Value(counter);}
+                        ImGui::SameLine(0.0f, spacing);
+                        if (ImGui::ArrowButton("##right", ImGuiDir_Right)) { counter++; (*curRelic)["data"]["count"] = rapidjson::Value(counter);
+                        }
+                        ImGui::PopItemFlag();
+                        ImGui::SameLine();
+                        ImGui::Text("Count: %d", counter);
+                        ImGui::SameLine();
+
+                    }
+                    
+                    ImGui::EndGroup();
 
                     ImGui::EndTabItem();
                 }
@@ -329,6 +385,19 @@ int main(int, char**)
         //HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
         g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
     }
+
+
+    //// Step 3: Save back
+    //std::ofstream ofs("relics.json");
+    //if (!ofs.is_open()) {
+    //    std::cerr << "Failed to open file for writing.\n";
+    //    return 1;
+    //}
+    //rapidjson::OStreamWrapper osw(ofs);
+    //rapidjson::Writer<rapidjson::OStreamWrapper> writer(osw);
+    //newDoc.Accept(writer);
+    //ofs.close();
+
 
     // Cleanup
     ImGui_ImplDX11_Shutdown();
