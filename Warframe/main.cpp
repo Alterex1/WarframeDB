@@ -71,26 +71,16 @@ int main(int, char**)
         return 1;
     }
 
-    // Create a new document to hold the array
-    rapidjson::Document newDoc;
-    newDoc.SetArray();
 
-    // Need an allocator to create new values
-    rapidjson::Document::AllocatorType& allocator = newDoc.GetAllocator();
-
-    for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); ++it) {
-        rapidjson::Value relic(rapidjson::kObjectType);
-
-        relic.AddMember("name", rapidjson::Value(it->name, allocator), allocator);
-        relic.AddMember("data", rapidjson::Value(it->value, allocator), allocator);
-
-        newDoc.PushBack(relic, allocator);
+    for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); it++) {
+        std::cout << it->name.GetString() << "\n";
+        /*for (auto it2 = it->value.MemberBegin(); it2 != it->value.MemberEnd(); ++it2)
+        {
+            std::cout << it2->name.GetString() << " ";
+        }*/
+        std::cout << "\n";
     }
-    for (auto& v : newDoc.GetArray()) {
-        std::cout << "Relic name: " << v["name"].GetString() << "\n";
-    }
-    std::cout << "Count: " << doc.MemberCount() << "\n";
-    
+
     // Create application window
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
@@ -269,17 +259,19 @@ int main(int, char**)
                     //    ImGui::EndListBox();
                     //}
 
-                    ImGuiTextFilter Filter;
+                    static ImGuiTextFilter Filter;
 
-                    rapidjson::GenericValue<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>* curRelic = NULL;
+                    
 
                     static int item_selected_idx_x = 0;
                     static int item_selected_idx_y = 0;
                     static bool item_highlight = false;
                     int item_highlighted_idx_x = -1;
                     int item_highlighted_idx_y = -1;
-                    int n = 0;
-                    
+
+                    rapidjson::Value::MemberIterator current = doc.MemberBegin();
+                    rapidjson::Value::MemberIterator curRelic = doc.MemberEnd();
+
                     if (ImGui::BeginChild("##table", ImVec2(925, 0)))
                     {
                         ImGui::SetNextItemWidth(-FLT_MIN);
@@ -289,28 +281,18 @@ int main(int, char**)
                             Filter.Build();
                         ImGui::PopItemFlag();
 
-                        for (int y = 0; y < 537; y++)
+                        for (int y = 0; y < 536; y++)
                         {
-                            
-
                             for (int x = 0; x < 5; x++)
                             {
                                 if (x > 0)
                                     ImGui::SameLine();
-                                    if (n == doc.MemberCount() - 2)
-                                    {
-                                        continue;
-                                    }
-
-                                
+                             
                                 const bool is_selected = (item_selected_idx_x == x && item_selected_idx_y == y);
-                                auto& relic = newDoc[n];
-                                const char* curName = relic["name"].GetString();
+                                const char* curName = current->name.GetString();
                                 
                                 if (Filter.PassFilter(curName))
                                 {
-
-                                
                                     if (ImGui::Selectable(curName, is_selected, 0, ImVec2(175, 50)))
                                     {
                                         item_selected_idx_x = x;
@@ -327,11 +309,11 @@ int main(int, char**)
                                     if (is_selected)
                                     { 
                                         ImGui::SetItemDefaultFocus();
-                                        curRelic = &relic;
+                                        curRelic = current;
                                     }
     
                                 }
-                                n++;
+                                current++;
                             }
                         }
                     }
@@ -340,18 +322,17 @@ int main(int, char**)
                     ImGui::SameLine();
                     ImGui::BeginGroup();
                     
-                    if (curRelic)
+                    if (curRelic != doc.MemberEnd())
                     {
-                        int counter = (*curRelic)["data"]["count"].GetInt();
-                        ImGui::Text("%s", (*curRelic)["name"].GetString());
-                        ImGui::Text("Farmable: %d", (*curRelic)["data"]["vaulted"].GetBool());
-                        
+                        int counter = curRelic->value["count"].GetInt();
+                        ImGui::Text("%s", curRelic->name.GetString());
+                        ImGui::Text("Farmable: %d", curRelic->value["vaulted"].GetBool());
+
                         float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
                         ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
-                        if (ImGui::ArrowButton("##left", ImGuiDir_Left)) { counter--; (*curRelic)["data"]["count"] = rapidjson::Value(counter);}
+                        if (ImGui::ArrowButton("##left", ImGuiDir_Left)) { counter--; curRelic->value["count"].SetInt(counter); }
                         ImGui::SameLine(0.0f, spacing);
-                        if (ImGui::ArrowButton("##right", ImGuiDir_Right)) { counter++; (*curRelic)["data"]["count"] = rapidjson::Value(counter);
-                        }
+                        if (ImGui::ArrowButton("##right", ImGuiDir_Right)) { counter++; curRelic->value["count"].SetInt(counter); }
                         ImGui::PopItemFlag();
                         ImGui::SameLine();
                         ImGui::Text("Count: %d", counter);
@@ -387,16 +368,16 @@ int main(int, char**)
     }
 
 
-    //// Step 3: Save back
-    //std::ofstream ofs("relics.json");
-    //if (!ofs.is_open()) {
-    //    std::cerr << "Failed to open file for writing.\n";
-    //    return 1;
-    //}
-    //rapidjson::OStreamWrapper osw(ofs);
-    //rapidjson::Writer<rapidjson::OStreamWrapper> writer(osw);
-    //newDoc.Accept(writer);
-    //ofs.close();
+    // Step 3: Save back
+    std::ofstream ofs("../WarframeItems/relics.json");
+    if (!ofs.is_open()) {
+        std::cerr << "Failed to open file for writing.\n";
+        return 1;
+    }
+    rapidjson::OStreamWrapper osw(ofs);
+    rapidjson::Writer<rapidjson::OStreamWrapper> writer(osw);
+    doc.Accept(writer);
+    ofs.close();
 
 
     // Cleanup
